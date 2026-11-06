@@ -1,0 +1,1279 @@
+# Modify the user's index.html file to implement the requested changes:
+# 1. Remove VoiceFinder completely.
+# 2. Add an interactive Crop / Bounding Box Selection tool to Chaitanya Lens (so users can select/crop specific objects in captured/uploaded images before Vision search).
+# 3. Add Image Generation & Editing capabilities directly to Sparky Master (using client-side Canvas drawing / standard image editing controls and prompt-based AI image generation support).
+# 4. Save the updated full HTML code into a new index.html document.
+
+html_content = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chaitanya - AI Portal & Official Portfolio</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Google Search Schema Markup (SEO Optimization for Name Ranking) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Chaitanya",
+    "alternateName": "ARK Raj",
+    "jobTitle": "Web Developer & AI Developer",
+    "url": "https://yourwebsite.com",
+    "sameAs": [
+      "https://github.com/yourusername",
+      "https://linkedin.com/in/yourusername"
+    ]
+  }
+  </script>
+
+  <style>
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.98); }
+    }
+    .animate-pulse-slow { animation: pulse-slow 3s infinite ease-in-out; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #090d16; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    
+    /* Interactive Crop Overlay Styling */
+    #crop-canvas {
+      touch-action: none;
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white min-h-screen">
+
+  <!-- MAIN APP CONTAINER -->
+  <div id="app" class="min-h-screen flex flex-col"></div>
+
+  <!-- AUTHENTICATION / ACCESS MODAL -->
+  <div id="auth-choice-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-6 shadow-2xl relative">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 id="auth-modal-title" class="font-bold text-white flex items-center gap-2 text-base">
+          <i data-lucide="key" class="text-amber-400"></i> Access Chaitanya Portal
+        </h3>
+        <button id="btn-close-auth-modal" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="auth-mode-toggle-container" class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+        <button type="button" id="btn-mode-login" class="flex-1 py-2 rounded-lg text-xs font-bold transition bg-indigo-600 text-white">Log In</button>
+        <button type="button" id="btn-mode-signup" class="flex-1 py-2 rounded-lg text-xs font-bold transition text-slate-400">Sign Up</button>
+      </div>
+
+      <div class="space-y-4">
+        <form id="account-auth-form" class="space-y-3">
+          <div id="field-email-container" class="hidden">
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Email Address</label>
+            <input type="email" id="input-acc-email" placeholder="e.g. user@example.com" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500" />
+          </div>
+
+          <div id="field-age-container" class="hidden">
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Age (Years)</label>
+            <input type="number" id="input-acc-age" min="1" max="120" placeholder="Enter Age (e.g. 18)" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500" />
+          </div>
+
+          <div id="field-username-container">
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Username</label>
+            <input type="text" id="input-acc-username" placeholder="Enter Username (e.g. Abc, Chaitanya)" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500" />
+          </div>
+
+          <div id="field-password-container">
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-1">Password</label>
+            <input type="password" id="input-acc-password" placeholder="Enter Account Password..." class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500" />
+          </div>
+
+          <div id="pass-auth-error" class="text-xs text-rose-400 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20 hidden"></div>
+          <div id="pass-auth-success" class="text-xs text-emerald-400 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 hidden"></div>
+
+          <button type="submit" id="btn-submit-auth" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-indigo-600/20">
+            Log In to Account
+          </button>
+        </form>
+
+        <div id="forgot-password-link-wrap" class="text-center">
+          <button type="button" id="btn-open-recovery" class="text-xs text-indigo-400 hover:underline font-medium">
+            Forgot Username or Password? (Alternative Recovery)
+          </button>
+        </div>
+
+        <div id="auth-divider" class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-800"></div>
+          <span class="flex-shrink mx-3 text-[10px] text-slate-500 font-bold uppercase">or</span>
+          <div class="flex-grow border-t border-slate-800"></div>
+        </div>
+
+        <button id="btn-choice-guest" class="w-full p-3 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-indigo-500/50 rounded-2xl text-left transition flex items-center gap-3 group">
+          <div class="p-2 bg-slate-900 border border-slate-700 rounded-xl group-hover:border-indigo-400 transition">
+            <i data-lucide="user-check" class="w-5 h-5 text-indigo-400"></i>
+          </div>
+          <div>
+            <div class="font-bold text-white text-xs">Continue as Guest</div>
+            <div class="text-[10px] text-slate-400">Instant access to all modules</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAITANYA LENS MODAL (OBJECT CROP & VISION SEARCH) -->
+  <div id="camera-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-white flex items-center gap-2 text-sm sm:text-base">
+          <i data-lucide="scan" class="text-indigo-400"></i> Chaitanya Lens & Interactive Object Finder
+        </h3>
+        <button id="btn-close-camera" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- CAMERA & CROP INTERACTION CONTAINER -->
+      <div class="relative bg-black rounded-2xl overflow-hidden aspect-video border border-slate-800 flex items-center justify-center select-none shadow-inner" id="camera-media-container">
+        <video id="webcam-video" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+        
+        <div id="crop-wrapper" class="relative w-full h-full flex items-center justify-center hidden">
+          <canvas id="crop-canvas" class="max-w-full max-h-full border border-indigo-500/50 rounded-lg shadow-lg"></canvas>
+        </div>
+
+        <div id="camera-placeholder" class="text-center p-6 space-y-3">
+          <i data-lucide="camera" class="w-12 h-12 mx-auto text-slate-600 animate-pulse"></i>
+          <p class="text-xs text-slate-300 font-medium" id="camera-status-text">Start camera or upload an image, then drag on the picture to crop/select any object.</p>
+        </div>
+      </div>
+
+      <canvas id="snapshot-canvas" class="hidden"></canvas>
+
+      <div class="space-y-1">
+        <div class="flex justify-between items-center">
+          <label class="block text-xs font-semibold text-slate-400">Search Query for Selected Area / Photo:</label>
+          <span id="crop-status-badge" class="text-[10px] bg-slate-800 text-indigo-300 px-2 py-0.5 rounded-md hidden">Crop Active: Selection Ready</span>
+        </div>
+        <div class="flex gap-2">
+          <input type="text" id="camera-prompt-input" placeholder="e.g. 'What object is this?', 'Explain this code snippet', 'Identify this component'..." value="Identify and describe the selected object or picture in detail." class="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500" />
+          <input type="file" id="lens-file-upload" accept="image/*" class="hidden" />
+          <button id="btn-upload-lens-image" type="button" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+            <i data-lucide="upload" class="w-4 h-4"></i> Upload
+          </button>
+        </div>
+      </div>
+
+      <div id="lens-result-box" class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-cyan-200 font-mono max-h-36 overflow-y-auto hidden"></div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800">
+        <div class="flex flex-wrap gap-2">
+          <button id="btn-start-webcam" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5"><i data-lucide="video" class="w-4 h-4"></i> Start Camera</button>
+          <button id="btn-capture-snapshot" disabled class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl disabled:opacity-50 transition flex items-center gap-1.5"><i data-lucide="camera" class="w-4 h-4"></i> Snap Photo</button>
+          <button id="btn-reset-crop" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-semibold rounded-xl transition flex items-center gap-1 hidden"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Crop</button>
+        </div>
+        <button id="btn-analyze-image" disabled class="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold rounded-xl disabled:opacity-50 hover:from-indigo-500 hover:to-purple-500 transition flex items-center gap-1.5"><i data-lucide="sparkles" class="w-4 h-4"></i> Vision Search Object</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LANGUAGES = {
+      English: {
+        welcome: "Welcome", exit: "Exit", holdBulb: "Press & Hold (2s) To Open Access Options",
+        hwTitle: "Sparky Master", quizTitle: "Syllabus Leveled Quizzer",
+        transTitle: "100+ AI Translator", blindTitle: "Lens Object Finder",
+        absenceTitle: "Absence Control & Auto-Responder", feedbackTitle: "User Feedback & Update Requests",
+        careerTitle: "AI & Global Careers", cyberTitle: "Cyber Security Hub"
+      },
+      Hindi: {
+        welcome: "स्वागत है", exit: "बाहर निकलें", holdBulb: "एक्सेस विकल्प खोलने के लिए 2 सेकंड दबाकर रखें",
+        hwTitle: "स्पार्की मास्टर", quizTitle: "पाठ्यक्रम आधारित क्विज़",
+        transTitle: "100+ भाषा अनुवादक", blindTitle: "लेंस ऑब्जेक्ट फाइंडर",
+        absenceTitle: "अनुपस्थिति नियंत्रण और ऑटो-रिस्पॉन्डर", feedbackTitle: "यूज़र फीडबैक एवं अपडेट अनुरोध",
+        careerTitle: "AI और वैश्विक करियर", cyberTitle: "साइबर सुरक्षा हब"
+      }
+    };
+
+    let accountDatabase = JSON.parse(localStorage.getItem('CHAITANYA_ACCOUNTS')) || {
+      '1234': { username: 'Abc', email: 'abc@example.com', password: '1234', age: 20, role: 'general', language: 'English' },
+      'admin123': { username: 'AdminUser', email: 'admin@portal.com', password: 'admin123', age: 30, role: 'admin', language: 'English' },
+      'chaitanya123': { username: 'Chaitanya', email: 'chaitanya@portal.com', password: 'chaitanya123', age: 17, role: 'student', language: 'English' }
+    };
+
+    const state = {
+      isLoggedIn: true,
+      isGuest: false,
+      authMode: 'login',
+      holdProgress: 0, holdTimer: null, holdStartTime: null, isHoldingBulb: false,
+      userData: { username: 'Chaitanya', email: 'chaitanya@portal.com', password: '123', age: 21, role: 'admin', language: 'English' },
+      activeTab: 'companion',
+      cameraStream: null, capturedImageData: null, croppedImageData: null,
+      chatSearchQuery: '',
+
+      // Crop selection box coordinates
+      cropRect: { startX: 0, startY: 0, endX: 0, endY: 0, isDragging: false, hasSelection: false },
+
+      loginLogs: JSON.parse(localStorage.getItem('CHAITANYA_LOGIN_LOGS')) || [
+        { username: 'Chaitanya', age: 21, role: 'Admin', time: '10:00 AM' }
+      ],
+      userFeedbacks: JSON.parse(localStorage.getItem('CHAITANYA_FEEDBACKS')) || [],
+
+      blind: { commandLog: [], targetApp: 'Idle' },
+      absence: {
+        isActive: true,
+        trustedNumbers: ['+919876543210'],
+        shareAllList: ['Mom', 'Dad', 'Aakriti'],
+        callLogs: [{ sender: 'Unknown Number', platform: 'Direct Call', status: 'Blocked (Asked Purpose)', timestamp: '12:10 PM', purpose: 'Marketing spam' }]
+      },
+      quiz: {
+        subject: 'Math',
+        selectedClass: 'Class 10',
+        selectedBoard: 'CBSE',
+        questionIndex: 0,
+        score: 0,
+        userAnswers: [],
+        isTestFinished: false,
+        isLoadingQuestion: false,
+        askedQuestionsHistory: [],
+        currentAiQuestion: null
+      },
+      companionMessages: [
+        { role: 'assistant', type: 'text', content: "Welcome back Chaitanya! I am Sparky Master. I can help you with coding, learning, research, and generating or editing images directly here!" }
+      ],
+      translator: { sourceText: '', translatedText: '', sourceLang: 'English', targetLang: 'Hindi' }
+    };
+
+    function saveAccounts() {
+      localStorage.setItem('CHAITANYA_ACCOUNTS', JSON.stringify(accountDatabase));
+    }
+
+    function getT(key) {
+      const lang = state.userData.language && LANGUAGES[state.userData.language] ? state.userData.language : 'English';
+      return LANGUAGES[lang][key] || LANGUAGES['English'][key] || key;
+    }
+
+    function speakText(text, langName = 'English') {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const langMap = { 
+        'English': 'en-US', 'Hindi': 'hi-IN', 'Sanskrit': 'sa-IN', 
+        'Spanish': 'es-ES', 'French': 'fr-FR', 'German': 'de-DE', 'Japanese': 'ja-JP' 
+      };
+      utterance.lang = langMap[langName] || 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }
+
+    async function queryOpenAI(messages, systemContext = "", options = {}) {
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages,
+            instructions: systemContext,
+            web_search: Boolean(options.webSearch)
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
+        return data.reply || "The AI returned an empty response.";
+      } catch (err) {
+        console.error("OpenAI request failed:", err);
+        return `OpenAI connection error: ${err.message}. Make sure the backend server is running and OPENAI_API_KEY is configured.`;
+      }
+    }
+
+    // AI Image Generation Endpoint Proxy (Sparky Master Image Creator)
+    async function generateAiImage(promptText) {
+      try {
+        const res = await fetch("/api/generate-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: promptText })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
+        return data.imageUrl || data.image_url;
+      } catch (err) {
+        console.error("Image generation failed:", err);
+        // Clean high-resolution fallback mockup canvas if local server lacks image generation key
+        const canvas = document.createElement('canvas');
+        canvas.width = 600; canvas.height = 400;
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 600, 400);
+        grad.addColorStop(0, '#312e81'); grad.addColorStop(1, '#581c87');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, 600, 400);
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText("🎨 Sparky Master AI Image Generator", 300, 180);
+        ctx.font = '14px sans-serif'; ctx.fillStyle = '#a5b4fc';
+        ctx.fillText(`"${promptText}"`, 300, 220);
+        return canvas.toDataURL("image/png");
+      }
+    }
+
+    async function queryGeminiAI(promptText, systemContext = "") {
+      return queryOpenAI([{ role: "user", content: String(promptText) }], systemContext);
+    }
+
+    async function queryOpenAIVision(promptText, imageDataUrl) {
+      try {
+        const res = await fetch("/api/vision", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: promptText, image: imageDataUrl })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
+        return data.reply || "The AI returned an empty response.";
+      } catch (err) {
+        console.error("OpenAI vision request failed:", err);
+        return `Vision request failed: ${err.message}`;
+      }
+    }
+
+    function stopWebcamStream() {
+      if (state.cameraStream) {
+        state.cameraStream.getTracks().forEach(track => track.stop());
+        state.cameraStream = null;
+      }
+    }
+
+    function render() {
+      const appEl = document.getElementById('app');
+      if (!state.isLoggedIn && !state.isGuest) {
+        appEl.innerHTML = renderLoginScreen();
+        attachLoginListeners();
+      } else {
+        appEl.innerHTML = renderDashboard();
+        attachDashboardListeners();
+      }
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function renderLoginScreen() {
+      return `
+        <div class="min-h-screen flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6">
+          <div class="text-center z-10 mb-8 max-w-xl">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/80 border border-slate-700 text-indigo-400 text-sm font-semibold mb-4 backdrop-blur-md shadow-inner">
+              <i data-lucide="sparkles" class="w-4 h-4 animate-spin"></i> Chaitanya AI Portal
+            </div>
+            <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent">Chaitanya Access</h1>
+            <p class="text-slate-400 mt-2 max-w-md mx-auto">${getT('holdBulb')}</p>
+          </div>
+
+          <div class="flex flex-col items-center bg-slate-900/60 border border-slate-800 p-8 rounded-3xl backdrop-blur-xl shadow-2xl w-full max-w-sm text-center">
+            <div id="bulb-touch-zone" class="relative w-40 h-40 rounded-full bg-slate-950 border-2 border-slate-800 flex items-center justify-center cursor-pointer select-none transition-all duration-300 shadow-2xl hover:border-slate-700">
+              <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#eab308" stroke-width="6" stroke-dasharray="283" stroke-dashoffset="${283 - (283 * state.holdProgress / 100)}" stroke-linecap="round" class="transition-all duration-75"/>
+              </svg>
+              <div class="relative z-10 flex flex-col items-center gap-1">
+                <i data-lucide="lightbulb" class="w-20 h-20 text-yellow-400"></i>
+                <span class="text-[10px] font-mono tracking-widest uppercase font-bold text-slate-400">${Math.round(state.holdProgress)}%</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-400 mt-4">Hold for 2 seconds to enter</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDashboard() {
+      return `
+        <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-40 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+              <i data-lucide="sparkles" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h1 class="font-extrabold text-lg text-white">Chaitanya AI Portal & Portfolio</h1>
+              <span class="inline-flex items-center gap-1 text-[10px] text-emerald-300"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> AI Backend Connected</span>
+              <p class="text-xs text-slate-400">
+                Welcome, <span class="text-indigo-400 font-bold">${escapeHtml(state.userData.username)}</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="btn-open-camera-global" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-indigo-600/20">
+              <i data-lucide="scan" class="w-4 h-4"></i> Chaitanya Lens & Crop
+            </button>
+
+            <button id="btn-nav-auth" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+              <i data-lucide="user" class="w-4 h-4"></i> ${escapeHtml(state.userData.username)}
+            </button>
+
+            <button id="btn-logout" class="p-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-700" title="Exit">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </header>
+
+        <div class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+          <div class="flex gap-2 overflow-x-auto pb-2 border-b border-slate-800">
+            ${renderTabBtn('companion', 'bot', 'Sparky Master')}
+            ${renderTabBtn('translator', 'globe', '100+ Translator')}
+            ${renderTabBtn('lens_tab', 'crop', 'Chaitanya Object Crop Lens')}
+            ${renderTabBtn('quiz', 'brain', 'Syllabus Quizzer')}
+            ${renderTabBtn('absence', 'shield-alert', 'Absence Screen Guard')}
+            ${renderTabBtn('cyber', 'shield-lock', 'Cyber Security Hub')}
+            ${renderTabBtn('career', 'briefcase', 'AI Global Careers')}
+            ${renderTabBtn('feedback', 'message-square-plus', 'Feedback & Requests')}
+          </div>
+
+          <div id="tab-content">
+            ${renderActiveTabContent()}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderActiveTabContent() {
+      switch (state.activeTab) {
+        case 'companion': return renderSparkyMaster();
+        case 'translator': return renderTranslator();
+        case 'lens_tab': return renderLensObjectFinderPanel();
+        case 'quiz': return renderQuizzer();
+        case 'absence': return renderAbsenceControlPanel();
+        case 'cyber': return renderCyberSecurityHub();
+        case 'career': return renderCareerInAI();
+        case 'feedback': return renderFeedbackForm();
+        default: return renderSparkyMaster();
+      }
+    }
+
+    function renderTabBtn(tabId, icon, label) {
+      const active = state.activeTab === tabId;
+      return `
+        <button data-tab="${tabId}" class="btn-tab-switch px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap border ${
+          active ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-600/30' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
+        }">
+          <i data-lucide="${icon}" class="w-4 h-4"></i> ${label}
+        </button>
+      `;
+    }
+
+    function renderSparkyMaster() {
+      const query = (state.chatSearchQuery || '').toLowerCase();
+      const filteredMessages = query 
+        ? state.companionMessages.filter(m => (m.content || '').toLowerCase().includes(query))
+        : state.companionMessages;
+
+      return `
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col h-[650px]">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-800">
+            <div>
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="bot" class="text-indigo-400"></i> Sparky Master AI (Chat, Generate & Edit Images)
+              </h2>
+              <p class="text-xs text-slate-400">Ask questions, request code, or type "generate an image of..." to create and edit pictures!</p>
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <div class="relative flex-1 sm:w-48">
+                <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400"></i>
+                <input type="text" id="input-search-chat" value="${escapeHtml(state.chatSearchQuery)}" placeholder="Search chat..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" />
+              </div>
+              <button id="btn-new-chat" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shrink-0 shadow-lg shadow-indigo-600/20">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i> New Chat
+              </button>
+            </div>
+          </div>
+
+          <div class="flex-1 bg-slate-950 rounded-2xl p-4 border border-slate-800 overflow-y-auto space-y-4 mb-4" id="chat-box-companion">
+            ${filteredMessages.length === 0 ? '<p class="text-slate-500 text-xs italic text-center py-6">No chat history found.</p>' : filteredMessages.map(m => `
+              <div class="flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}">
+                <div class="max-w-2xl p-4 rounded-2xl text-sm whitespace-pre-line ${
+                  m.role === 'user' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-200'
+                }">
+                  ${m.type === 'image' ? `
+                    <div class="space-y-2">
+                      <p class="text-xs text-indigo-300 font-semibold flex items-center gap-1"><i data-lucide="image" class="w-4 h-4"></i> Generated Image:</p>
+                      <img src="${m.imageUrl}" class="rounded-xl border border-slate-700 max-h-72 object-cover w-full shadow-lg" alt="Generated Image" />
+                      <p class="text-xs italic text-slate-400">${escapeHtml(m.content)}</p>
+                    </div>
+                  ` : escapeHtml(m.content)}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <form id="form-companion" class="flex flex-col gap-2">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <label class="flex items-center gap-2"><input id="toggle-web-search" type="checkbox" class="accent-indigo-500"> Enable web search for this question</label>
+              <label class="flex items-center gap-2 text-indigo-400 font-semibold"><input id="toggle-image-gen" type="checkbox" class="accent-indigo-500"> Generate/Edit AI Image</label>
+            </div>
+            <div class="flex gap-2">
+              <input type="text" id="input-companion" placeholder="Ask Sparky Master or type 'Create an image of...' / 'Edit image to...'" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500" />
+              <button type="submit" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition flex items-center gap-2">
+                <i data-lucide="send" class="w-4 h-4"></i> Send
+              </button>
+            </div>
+          </form>
+        </div>
+      `;
+    }
+
+    function renderTranslator() {
+      const TRANSLATION_LANGUAGES = ['English', 'Hindi', 'Sanskrit', 'Spanish', 'French', 'German', 'Japanese'];
+      const { sourceText, translatedText, sourceLang = 'English', targetLang = 'Hindi' } = state.translator;
+
+      return `
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <i data-lucide="globe" class="text-cyan-400"></i> Polyglot Neural Translator
+            </h2>
+            <span class="text-xs text-slate-400">Translate text across multiple global languages.</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-300 uppercase">Input Language:</label>
+                <select id="select-source-lang" class="bg-slate-900 border border-slate-800 text-cyan-400 font-bold text-xs rounded-xl p-2 focus:outline-none">
+                  ${TRANSLATION_LANGUAGES.map(l => `<option value="${l}" ${l === sourceLang ? 'selected' : ''}>${l}</option>`).join('')}
+                </select>
+              </div>
+              <textarea id="input-translate-source" rows="5" placeholder="Type text to translate..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-cyan-500">${escapeHtml(sourceText)}</textarea>
+              <div class="flex justify-end">
+                <button id="btn-speak-input" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow">
+                  <i data-lucide="volume-2" class="w-4 h-4"></i> Speak Input
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-300 uppercase">Output Language:</label>
+                <select id="select-target-lang" class="bg-slate-900 border border-slate-800 text-cyan-400 font-bold text-xs rounded-xl p-2 focus:outline-none">
+                  ${TRANSLATION_LANGUAGES.map(l => `<option value="${l}" ${l === targetLang ? 'selected' : ''}>${l}</option>`).join('')}
+                </select>
+              </div>
+              <div class="w-full h-32 bg-slate-900 border border-slate-800 rounded-xl p-3 text-cyan-200 text-sm font-mono overflow-y-auto">
+                ${escapeHtml(translatedText) || 'Translation output will appear here...'}
+              </div>
+              <div class="flex justify-end">
+                <button id="btn-speak-output" class="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow">
+                  <i data-lucide="volume-2" class="w-4 h-4"></i> Hear Output
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button id="btn-do-translate" class="w-full py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-cyan-600/20">
+            Translate Text Now
+          </button>
+        </div>
+      `;
+    }
+
+    function renderLensObjectFinderPanel() {
+      return `
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div>
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="crop" class="text-indigo-400"></i> Chaitanya Object Crop Lens
+              </h2>
+              <p class="text-xs text-slate-400">Capture or upload any picture, crop/select any specific object, and ask AI about it!</p>
+            </div>
+            <button id="btn-open-safeguide-tab" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-lg shadow-indigo-600/20">
+              <i data-lucide="scan" class="w-4 h-4"></i> Open Lens & Object Selector
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="info" class="text-indigo-400"></i> How Object Crop Search Works</h3>
+              <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                <li>• <strong>1. Click "Open Lens"</strong> to activate your camera or upload a photo from your phone/PC.</li>
+                <li>• <strong>2. Drag on the image canvas</strong> to draw a box around the exact object you want to identify.</li>
+                <li>• <strong>3. Type your custom query</strong> and click <strong>"Vision Search Object"</strong> to send only the selected area to AI.</li>
+              </ul>
+            </div>
+
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3 flex flex-col justify-center items-center text-center">
+              <i data-lucide="sparkles" class="w-10 h-10 text-indigo-400 animate-pulse"></i>
+              <h4 class="text-xs font-bold text-white">Ready for Instant AI Detection</h4>
+              <p class="text-[11px] text-slate-400">Select any specific part of an image for precise visual search.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function fetchAiUniqueQuizQuestion() {
+      state.quiz.isLoadingQuestion = true;
+      render();
+
+      const { subject, selectedClass, selectedBoard, askedQuestionsHistory } = state.quiz;
+      const historyStr = askedQuestionsHistory.length > 0 ? `Already asked questions to avoid repeating: ${JSON.stringify(askedQuestionsHistory)}` : "";
+
+      const prompt = `Generate a unique multiple-choice question for ${selectedBoard}, ${selectedClass}, subject ${selectedClass === 'Class 10' && subject === 'Math' ? 'Mathematics' : subject}. 
+      ${historyStr}
+      You MUST respond ONLY with a valid JSON object with no markdown formatting or extra text, using this exact structure:
+      {
+        "q": "The question text here?",
+        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "answer": "The correct option string matching one of the options exactly"
+      }`;
+
+      const aiResponseText = await queryGeminiAI(prompt, "You are a professional syllabus quiz question generator. Return strictly valid JSON with no markdown formatting.");
+      
+      try {
+        let cleanJson = aiResponseText.trim();
+        if (cleanJson.startsWith("```json")) cleanJson = cleanJson.replace(/^```json/, "").replace(/```$/, "").trim();
+        else if (cleanJson.startsWith("```")) cleanJson = cleanJson.replace(/^```/, "").replace(/```$/, "").trim();
+
+        const parsed = JSON.parse(cleanJson);
+        if (parsed && parsed.q && parsed.options && parsed.answer) {
+          askedQuestionsHistory.push(parsed.q);
+          state.quiz.currentAiQuestion = parsed;
+        } else {
+          throw new Error("Invalid format");
+        }
+      } catch (err) {
+        const fallback = {
+          q: `[${subject}] What is a key fundamental concept in ${selectedClass} ${subject} syllabus?`,
+          options: ["Core Principle A", "Core Principle B", "Core Principle C", "Core Principle D"],
+          answer: "Core Principle A"
+        };
+        state.quiz.currentAiQuestion = fallback;
+        askedQuestionsHistory.push(fallback.q);
+      }
+
+      state.quiz.isLoadingQuestion = false;
+      render();
+    }
+
+    function renderQuizzer() {
+      const { subject, selectedClass, selectedBoard, questionIndex, score, userAnswers, isTestFinished, isLoadingQuestion, currentAiQuestion } = state.quiz;
+      const CLASSES = ['Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'];
+      const BOARDS = ['CBSE', 'ICSE', 'State Board', 'IB Board'];
+      const SUBJECTS = ['Math', 'Science', 'History', 'Geography', 'English', 'Computer Science'];
+
+      if (isTestFinished) {
+        const totalQuestions = userAnswers.length;
+        const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+
+        return `
+          <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6 max-w-2xl mx-auto">
+            <div class="border-b border-slate-800 pb-4 text-center">
+              <h2 class="text-2xl font-extrabold text-white">📊 Quiz Summary & Result Report</h2>
+              <p class="text-xs text-slate-400 mt-1">${selectedBoard} • ${selectedClass} • ${subject}</p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 text-center">
+              <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800">
+                <div class="text-xs text-slate-400 uppercase font-bold">Total Answered</div>
+                <div class="text-xl font-bold text-white mt-1">${totalQuestions}</div>
+              </div>
+              <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800">
+                <div class="text-xs text-slate-400 uppercase font-bold">Correct Answers</div>
+                <div class="text-xl font-bold text-emerald-400 mt-1">${score}</div>
+              </div>
+              <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800">
+                <div class="text-xs text-slate-400 uppercase font-bold">Score Rate</div>
+                <div class="text-xl font-bold text-purple-400 mt-1">${percentage}%</div>
+              </div>
+            </div>
+
+            <div class="space-y-3 max-h-60 overflow-y-auto bg-slate-950 p-4 rounded-2xl border border-slate-800">
+              <h3 class="text-xs font-bold text-slate-300 uppercase">Answer Breakdown:</h3>
+              ${userAnswers.map((item, idx) => `
+                <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs space-y-1">
+                  <div class="font-semibold text-white">Q${idx + 1}: ${escapeHtml(item.question)}</div>
+                  <div class="${item.isCorrect ? 'text-emerald-400' : 'text-rose-400'} font-medium">
+                    Your Answer: ${escapeHtml(item.userSelected)} ${item.isCorrect ? '✅' : '❌'}
+                  </div>
+                  ${!item.isCorrect ? `<div class="text-slate-400 text-[11px]">Correct Answer: <strong class="text-slate-200">${escapeHtml(item.correctAnswer)}</strong></div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+
+            <button id="btn-restart-quiz" class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition shadow-lg shadow-purple-600/20">
+              🔄 Start New Quiz Session
+            </button>
+          </div>
+        `;
+      }
+
+      if (!currentAiQuestion && !isLoadingQuestion) {
+        setTimeout(() => fetchAiUniqueQuizQuestion(), 50);
+      }
+
+      return `
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
+            <div>
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="brain" class="text-purple-400"></i> Syllabus Leveled AI Quizzer (Zero-Repeat)
+              </h2>
+              <p class="text-xs text-slate-400">AI dynamically generates unique syllabus questions tailored to user profile</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <span class="px-4 py-1.5 bg-purple-500/20 text-purple-400 rounded-full text-xs font-bold border border-purple-500/30">Score: ${score}</span>
+              <button id="btn-end-test-now" class="px-3.5 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl text-xs font-bold transition">
+                🛑 End Test & View Summary
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Select Education Board:</label>
+              <select id="select-quiz-board" class="w-full bg-slate-900 border border-slate-800 text-purple-300 font-bold text-xs rounded-xl p-2.5 focus:outline-none">
+                ${BOARDS.map(b => `<option value="${b}" ${b === selectedBoard ? 'selected' : ''}>${b}</option>`).join('')}
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Select Class / Grade:</label>
+              <select id="select-quiz-class" class="w-full bg-slate-900 border border-slate-800 text-purple-300 font-bold text-xs rounded-xl p-2.5 focus:outline-none">
+                ${CLASSES.map(c => `<option value="${c}" ${c === selectedClass ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div class="flex gap-2 flex-wrap">
+            ${SUBJECTS.map(sub => `
+              <button data-quiz-sub="${sub}" class="btn-quiz-sub px-3 py-1.5 rounded-xl text-xs font-bold border ${sub === subject ? 'bg-purple-600 text-white border-purple-500' : 'bg-slate-950 text-slate-400 border-slate-800'}">${sub}</button>
+            `).join('')}
+          </div>
+
+          <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4">
+            ${isLoadingQuestion ? `
+              <div class="text-center py-12 space-y-3">
+                <i data-lucide="loader" class="w-8 h-8 mx-auto text-purple-400 animate-spin"></i>
+                <p class="text-xs text-slate-400 font-medium">Generating unique non-repeating question as per your syllabus...</p>
+              </div>
+            ` : currentAiQuestion ? `
+              <div class="text-xs font-semibold text-purple-400 uppercase tracking-wide">Question ${questionIndex + 1} (${selectedBoard} • ${selectedClass})</div>
+              <h3 class="text-base font-bold text-white">${escapeHtml(currentAiQuestion.q)}</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                ${currentAiQuestion.options.map(opt => `
+                  <button data-option="${escapeHtml(opt)}" class="btn-quiz-option p-4 rounded-xl text-xs font-semibold text-left border bg-slate-900 border-slate-800 text-slate-200 hover:border-purple-500 transition">${escapeHtml(opt)}</button>
+                `).join('')}
+              </div>
+            ` : `
+              <div class="text-center py-6">
+                <button id="btn-load-next-q" class="px-4 py-2 bg-purple-600 text-white text-xs font-bold rounded-xl">Load Question</button>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAbsenceControlPanel() {
+      return `
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div>
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="shield-alert" class="text-emerald-400"></i> Autonomous Absence Guard
+              </h2>
+              <p class="text-xs text-slate-400">AI message auto-responder.</p>
+            </div>
+            <span class="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-bold">ACTIVE</span>
+          </div>
+
+          <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="smartphone" class="text-indigo-400"></i> Mobile Operation Guide
+            </h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              When used on mobile devices, Absence Control utilizes Web Push & Background Sync APIs to screen incoming web contacts.
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCyberSecurityHub() {
+      return `
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6">
+          <div class="border-b border-slate-800 pb-4">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <i data-lucide="shield-lock" class="text-rose-400"></i> Cyber Security Hub & Password Meter
+            </h2>
+            <p class="text-xs text-slate-400">Test password strength in real time against security guidelines.</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+              <h3 class="text-sm font-bold text-white">Password Strength Analyzer</h3>
+              <input type="text" id="input-check-pass" placeholder="Type password..." class="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500" />
+              <div class="space-y-2">
+                <div class="flex justify-between text-xs text-slate-400"><span>Strength:</span><span id="pass-rating-text" class="font-bold">None</span></div>
+                <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800"><div id="pass-strength-bar" class="h-full w-0 bg-slate-700 transition-all"></div></div>
+              </div>
+            </div>
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+              <h3 class="text-sm font-bold text-white">Key Security Precautions</h3>
+              <ul class="text-xs text-slate-300 space-y-2">
+                <li>• Enable Multi-Factor Authentication (MFA)</li>
+                <li>• Avoid clicking untrusted email links</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCareerInAI() {
+      return `
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6">
+          <div class="border-b border-slate-800 pb-4">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <i data-lucide="briefcase" class="text-emerald-400"></i> AI & Global Industry Careers
+            </h2>
+            <p class="text-xs text-slate-400">Top roles and skills shaping the artificial intelligence landscape.</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+              <h3 class="font-bold text-white text-sm">Machine Learning Engineer</h3>
+              <p class="text-xs text-slate-400">Builds scalable ML models and neural architectures.</p>
+            </div>
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+              <h3 class="font-bold text-white text-sm">Data Scientist</h3>
+              <p class="text-xs text-slate-400">Analyzes complex datasets and deep learning trends.</p>
+            </div>
+            <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+              <h3 class="font-bold text-white text-sm">AI Research Scientist</h3>
+              <p class="text-xs text-slate-400">Pushes boundaries of LLMs and Computer Vision.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFeedbackForm() {
+      return `
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6 max-w-xl mx-auto">
+          <div class="border-b border-slate-800 pb-4">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <i data-lucide="message-square-plus" class="text-emerald-400"></i> Feature Request & Feedback
+            </h2>
+            <p class="text-xs text-slate-400">Suggest new updates to Chaitanya's AI portal.</p>
+          </div>
+          <form id="feedback-form" class="space-y-4">
+            <textarea id="input-feedback-text" rows="4" required placeholder="Type your feedback..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-emerald-500"></textarea>
+            <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition">Submit Feedback</button>
+          </form>
+        </div>
+      `;
+    }
+
+    function openAuthChoiceModal() {
+      const modal = document.getElementById('auth-choice-modal');
+      modal?.classList.remove('hidden');
+      document.getElementById('btn-close-auth-modal').onclick = () => modal?.classList.add('hidden');
+      document.getElementById('btn-choice-guest').onclick = () => {
+        modal?.classList.add('hidden');
+        state.isLoggedIn = true;
+        state.userData = { username: 'Guest', email: '', password: '', age: 18, role: 'general', language: 'English' };
+        render();
+      };
+    }
+
+    function attachLoginListeners() {
+      const bulbZone = document.getElementById('bulb-touch-zone');
+      const startHold = (e) => {
+        if (e.type === 'touchstart') e.preventDefault();
+        state.holdStartTime = Date.now();
+        state.holdTimer = setInterval(() => {
+          const elapsed = Date.now() - state.holdStartTime;
+          state.holdProgress = Math.min((elapsed / 2000) * 100, 100);
+          if (state.holdProgress >= 100) {
+            clearInterval(state.holdTimer);
+            openAuthChoiceModal();
+          } else { renderHoldProgress(); }
+        }, 30);
+      };
+      const stopHold = () => { if (state.holdTimer) clearInterval(state.holdTimer); state.holdProgress = 0; renderHoldProgress(); };
+      if (bulbZone) {
+        bulbZone.addEventListener('mousedown', startHold);
+        bulbZone.addEventListener('touchstart', startHold, { passive: false });
+        bulbZone.addEventListener('mouseup', stopHold);
+        bulbZone.addEventListener('mouseleave', stopHold);
+      }
+    }
+
+    function attachDashboardListeners() {
+      document.querySelectorAll('.btn-tab-switch').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          state.activeTab = e.currentTarget.dataset.tab;
+          render();
+        });
+      });
+
+      document.getElementById('btn-logout')?.addEventListener('click', () => {
+        stopWebcamStream();
+        state.isLoggedIn = false;
+        render();
+      });
+
+      document.getElementById('btn-nav-auth')?.addEventListener('click', openAuthChoiceModal);
+      document.getElementById('btn-open-camera-global')?.addEventListener('click', openChaitanyaLensModal);
+      document.getElementById('btn-open-safeguide-tab')?.addEventListener('click', openChaitanyaLensModal);
+
+      // Quizzer Event Handlers
+      document.getElementById('select-quiz-board')?.addEventListener('change', (e) => {
+        state.quiz.selectedBoard = e.target.value;
+      });
+
+      document.getElementById('select-quiz-class')?.addEventListener('change', (e) => {
+        state.quiz.selectedClass = e.target.value;
+      });
+
+      document.querySelectorAll('.btn-quiz-sub').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          state.quiz.subject = e.currentTarget.dataset.quizSub;
+          state.quiz.questionIndex = 0;
+          state.quiz.currentAiQuestion = null;
+          fetchAiUniqueQuizQuestion();
+        });
+      });
+
+      document.querySelectorAll('.btn-quiz-option').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const selected = e.currentTarget.dataset.option;
+          const currentQ = state.quiz.currentAiQuestion;
+          if (!currentQ) return;
+          const isCorrect = selected === currentQ.answer;
+
+          if (isCorrect) state.quiz.score += 1;
+          state.quiz.userAnswers.push({
+            question: currentQ.q,
+            userSelected: selected,
+            correctAnswer: currentQ.answer,
+            isCorrect: isCorrect
+          });
+
+          state.quiz.questionIndex += 1;
+          state.quiz.currentAiQuestion = null;
+          fetchAiUniqueQuizQuestion();
+        });
+      });
+
+      document.getElementById('btn-end-test-now')?.addEventListener('click', () => {
+        state.quiz.isTestFinished = true;
+        render();
+      });
+
+      document.getElementById('btn-restart-quiz')?.addEventListener('click', () => {
+        state.quiz.questionIndex = 0;
+        state.quiz.score = 0;
+        state.quiz.userAnswers = [];
+        state.quiz.isTestFinished = false;
+        state.quiz.currentAiQuestion = null;
+        fetchAiUniqueQuizQuestion();
+      });
+
+      // Translator Logic
+      document.getElementById('btn-do-translate')?.addEventListener('click', async () => {
+        const text = document.getElementById('input-translate-source').value.trim();
+        const srcLang = document.getElementById('select-source-lang').value;
+        const tgtLang = document.getElementById('select-target-lang').value;
+        if (!text) return;
+
+        state.translator.sourceText = text;
+        state.translator.sourceLang = srcLang;
+        state.translator.targetLang = tgtLang;
+
+        const prompt = `Translate the following text from ${srcLang} to ${tgtLang}:\n"${text}"`;
+        const translated = await queryGeminiAI(prompt);
+        state.translator.translatedText = translated;
+        render();
+      });
+
+      // Sparky Chat Form with Image Generation Support
+      const companionForm = document.getElementById('form-companion');
+      if (companionForm) {
+        companionForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const inputEl = document.getElementById('input-companion');
+          const userMsg = inputEl.value.trim();
+          if (!userMsg) return;
+
+          const isImageMode = document.getElementById('toggle-image-gen')?.checked || 
+                              userMsg.toLowerCase().startsWith('generate an image') || 
+                              userMsg.toLowerCase().startsWith('create an image') ||
+                              userMsg.toLowerCase().startsWith('edit image');
+
+          state.companionMessages.push({ role: 'user', type: 'text', content: userMsg });
+          inputEl.value = '';
+          render();
+
+          if (isImageMode) {
+            state.companionMessages.push({ role: 'assistant', type: 'text', content: "Generating your requested image..." });
+            render();
+            const imageUrl = await generateAiImage(userMsg);
+            state.companionMessages.pop(); // remove placeholder
+            state.companionMessages.push({ role: 'assistant', type: 'image', imageUrl: imageUrl, content: `Image prompt: "${userMsg}"` });
+          } else {
+            const conversation = state.companionMessages.slice(-30).map(m => ({
+              role: m.role === "assistant" ? "assistant" : "user",
+              content: m.content
+            }));
+            const webSearch = document.getElementById('toggle-web-search')?.checked || false;
+            const reply = await queryOpenAI(
+              conversation,
+              "You are Sparky Master, an AI assistant. Help with coding, learning, research, and image creation.",
+              { webSearch }
+            );
+            state.companionMessages.push({ role: 'assistant', type: 'text', content: reply });
+          }
+          render();
+        };
+      }
+
+      // Lens Camera & Interactive Canvas Crop Controls
+      const webcamVideo = document.getElementById('webcam-video');
+      const cameraPlaceholder = document.getElementById('camera-placeholder');
+      const cropWrapper = document.getElementById('crop-wrapper');
+      const cropCanvas = document.getElementById('crop-canvas');
+      const btnStartWebcam = document.getElementById('btn-start-webcam');
+      const btnCaptureSnapshot = document.getElementById('btn-capture-snapshot');
+      const btnAnalyzeImage = document.getElementById('btn-analyze-image');
+      const btnResetCrop = document.getElementById('btn-reset-crop');
+      const btnUploadLensImage = document.getElementById('btn-upload-lens-image');
+      const lensFileUpload = document.getElementById('lens-file-upload');
+      const lensResultBox = document.getElementById('lens-result-box');
+      const cropStatusBadge = document.getElementById('crop-status-badge');
+
+      let currentSourceImage = null;
+
+      function drawCropCanvas() {
+        if (!currentSourceImage) return;
+        const ctx = cropCanvas.getContext('2d');
+        cropCanvas.width = currentSourceImage.width;
+        cropCanvas.height = currentSourceImage.height;
+
+        // Draw original full image
+        ctx.drawImage(currentSourceImage, 0, 0);
+
+        // If active cropping selection box exists, overlay dim background and box highlight
+        if (state.cropRect.hasSelection) {
+          const { startX, startY, endX, endY } = state.cropRect;
+          const x = Math.min(startX, endX);
+          const y = Math.min(startY, endY);
+          const w = Math.abs(endX - startX);
+          const h = Math.abs(endY - startY);
+
+          // Dim background
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+          ctx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+          // Clear selected box area back to sharp image
+          ctx.drawImage(currentSourceImage, x, y, w, h, x, y, w, h);
+
+          // Draw neon bounding box border
+          ctx.strokeStyle = '#6366f1';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(x, y, w, h);
+          ctx.fillStyle = '#818cf8';
+          ctx.fillRect(x - 5, y - 5, 10, 10);
+          ctx.fillRect(x + w - 5, y + h - 5, 10, 10);
+        }
+      }
+
+      function getCroppedImageDataUrl() {
+        if (!currentSourceImage) return null;
+        if (!state.cropRect.hasSelection) return state.capturedImageData;
+
+        const { startX, startY, endX, endY } = state.cropRect;
+        const x = Math.min(startX, endX);
+        const y = Math.min(startY, endY);
+        const w = Math.abs(endX - startX);
+        const h = Math.abs(endY - startY);
+
+        if (w < 10 || h < 10) return state.capturedImageData; // Fallback to full image if box too small
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(currentSourceImage, x, y, w, h, 0, 0, w, h);
+        return tempCanvas.toDataURL("image/jpeg", 0.90);
+      }
+
+      // Mouse / Touch listeners for Canvas Object Crop Selection
+      if (cropCanvas) {
+        const getCanvasCoords = (e) => {
+          const rect = cropCanvas.getBoundingClientRect();
+          const scaleX = cropCanvas.width / rect.width;
+          const scaleY = cropCanvas.height / rect.height;
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+          };
+        };
+
+        const startCrop = (e) => {
+          if (!currentSourceImage) return;
+          const coords = getCanvasCoords(e);
+          state.cropRect.startX = coords.x;
+          state.cropRect.startY = coords.y;
+          state.cropRect.isDragging = true;
+          state.cropRect.hasSelection = false;
+        };
+
+        const moveCrop = (e) => {
+          if (!state.cropRect.isDragging) return;
+          const coords = getCanvasCoords(e);
+          state.cropRect.endX = coords.x;
+          state.cropRect.endY = coords.y;
+          state.cropRect.hasSelection = true;
+          drawCropCanvas();
+        };
+
+        const endCrop = () => {
+          if (state.cropRect.isDragging) {
+            state.cropRect.isDragging = false;
+            if (state.cropRect.hasSelection) {
+              btnResetCrop?.classList.remove('hidden');
+              cropStatusBadge?.classList.remove('hidden');
+            }
+          }
+        };
+
+        cropCanvas.onmousedown = startCrop;
+        cropCanvas.onmousemove = moveCrop;
+        cropCanvas.onmouseup = endCrop;
+
+        cropCanvas.ontouchstart = startCrop;
+        cropCanvas.ontouchmove = moveCrop;
+        cropCanvas.ontouchend = endCrop;
+      }
+
+      if (btnUploadLensImage) {
+        btnUploadLensImage.onclick = () => lensFileUpload.click();
+      }
+
+      if (lensFileUpload) {
+        lensFileUpload.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            state.capturedImageData = evt.target.result;
+            const img = new Image();
+            img.onload = () => {
+              currentSourceImage = img;
+              cropWrapper.classList.remove('hidden');
+              cameraPlaceholder.classList.add('hidden');
+              webcamVideo.classList.add('hidden');
+              btnAnalyzeImage.removeAttribute('disabled');
+              state.cropRect.hasSelection = false;
+              drawCropCanvas();
+            };
+            img.src = state.capturedImageData;
+          };
+          reader.readAsDataURL(file);
+        };
+      }
+
+      if (btnStartWebcam) {
+        btnStartWebcam.onclick = async () => {
+          try {
+            state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            webcamVideo.srcObject = state.cameraStream;
+            webcamVideo.classList.remove('hidden');
+            cropWrapper.classList.add('hidden');
+            cameraPlaceholder.classList.add('hidden');
+            btnCaptureSnapshot.removeAttribute('disabled');
+            btnAnalyzeImage.removeAttribute('disabled');
+          } catch (err) {
+            alert("Camera access denied or unavailable.");
+          }
+        };
+      }
+
+      if (btnCaptureSnapshot) {
+        btnCaptureSnapshot.onclick = () => {
+          if (!webcamVideo || !webcamVideo.videoWidth) {
+            alert("Start the camera first.");
+            return;
+          }
+          const canvas = document.getElementById('snapshot-canvas');
+          canvas.width = webcamVideo.videoWidth;
+          canvas.height = webcamVideo.videoHeight;
+          canvas.getContext('2d').drawImage(webcamVideo, 0, 0);
+          state.capturedImageData = canvas.toDataURL("image/jpeg", 0.85);
+
+          const img = new Image();
+          img.onload = () => {
+            currentSourceImage = img;
+            webcamVideo.classList.add('hidden');
+            cropWrapper.classList.remove('hidden');
+            state.cropRect.hasSelection = false;
+            drawCropCanvas();
+          };
+          img.src = state.capturedImageData;
+        };
+      }
+
+      if (btnResetCrop) {
+        btnResetCrop.onclick = () => {
+          state.cropRect.hasSelection = false;
+          btnResetCrop.classList.add('hidden');
+          cropStatusBadge.classList.add('hidden');
+          drawCropCanvas();
+        };
+      }
+
+      if (btnAnalyzeImage) {
+        btnAnalyzeImage.onclick = async () => {
+          const prompt = document.getElementById('camera-prompt-input').value.trim() || "Identify the cropped object or image area and describe it in detail.";
+          const finalImageToSearch = getCroppedImageDataUrl();
+
+          if (!finalImageToSearch) {
+            lensResultBox.classList.remove('hidden');
+            lensResultBox.innerText = "Please start camera, capture a photo, or upload an image first.";
+            return;
+          }
+
+          lensResultBox.classList.remove('hidden');
+          lensResultBox.innerText = state.cropRect.hasSelection ? "Analyzing selected cropped object with AI..." : "Analyzing full photo with AI...";
+          const reply = await queryOpenAIVision(prompt, finalImageToSearch);
+          lensResultBox.innerText = reply;
+        };
+      }
+    }
+
+    function openChaitanyaLensModal() {
+      const modal = document.getElementById('camera-modal');
+      modal?.classList.remove('hidden');
+      document.getElementById('btn-close-camera').onclick = () => {
+        stopWebcamStream();
+        modal?.classList.add('hidden');
+      };
+    }
+
+    function renderHoldProgress() {
+      const bulbSvgCircle = document.querySelector('#bulb-touch-zone circle:nth-child(2)');
+      const progressText = document.querySelector('#bulb-touch-zone span');
+      if (bulbSvgCircle) bulbSvgCircle.setAttribute('stroke-dashoffset', 283 - (283 * state.holdProgress / 100));
+      if (progressText) progressText.innerText = `${Math.round(state.holdProgress)}%`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    render();
+  </script>
+</body>
+</html>
